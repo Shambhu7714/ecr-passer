@@ -262,7 +262,7 @@ class HierarchyExtractor:
         def render_tree(node_dict, indent=0):
             for key, value in node_dict.items():
                 series_count = len(value.get("series_codes", [])) if isinstance(value, dict) else 0
-                lines.append("  " * indent + f"├─ {key} ({series_count} series)")
+                lines.append("  " * indent + f"  {key} ({series_count} series)")
                 
                 if isinstance(value, dict) and "children" in value and value["children"]:
                     render_tree(value["children"], indent + 1)

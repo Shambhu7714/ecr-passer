@@ -186,7 +186,7 @@ class PatternCache:
         self.stats["fast_track_count"] += 1
         self._save_stats()
         
-        logger.info(f"✓ Valid pattern found (fingerprint: {fingerprint[:8]}, "
+        logger.info(f"[OK] Valid pattern found (fingerprint: {fingerprint[:8]}, "
                    f"confidence: {confidence:.2f}, uses: {success_count})")
         
         return pattern

@@ -32,6 +32,7 @@ class HybridSupervisor:
     
     def __init__(self, mapping_file, pattern_file=None, enable_hybrid=True):
         self.logger = get_logger()
+        self.mapping_file = mapping_file          #   stored for country detection in preprocess_excel
         self.map_loader = MapLoader(mapping_file)
         self.intelligence = IntelligenceLayer(pattern_file)
         self.core = DeterministicCore()
@@ -42,7 +43,7 @@ class HybridSupervisor:
         self.enable_hybrid = enable_hybrid
         
         if self.enable_hybrid:
-            self.logger.info("🚀 Initializing Hybrid Agentic Architecture")
+            self.logger.info("[START] Initializing Hybrid Agentic Architecture")
             self.router = MultiTrackRouter(enable_cache=True, enable_feedback=True)
             self.semantic_validator = SemanticValidator()
             self.hierarchy_extractor = HierarchyExtractor()
@@ -86,7 +87,7 @@ class HybridSupervisor:
         7. Learn from outcome
         """
         self.logger.info("=" * 70)
-        self.logger.info("🚀 HYBRID AGENTIC PIPELINE")
+        self.logger.info("[START] HYBRID AGENTIC PIPELINE")
         self.logger.info("=" * 70)
 
         base_name = os.path.splitext(os.path.basename(input_file))[0]
@@ -95,14 +96,34 @@ class HybridSupervisor:
         self.logger.info("Step 1: Loading mapping configuration...")
         mapping = self.map_loader.load()
         self.logger.info(f"  Loaded {len(mapping)} series mappings")
+
+        # Step 1.5: Validate mapping TABs vs actual input file sheets (Problem 2 Fix)
+        self.logger.info("Step 1.5: Validating mapping vs source file...")
+        is_mapping_valid, validation_report = self.map_loader.validate_mapping_vs_source(input_file)
+        if not is_mapping_valid:
+            self.logger.warning(
+                f"  [WARN] Mapping mismatch detected! "
+                f"{len(validation_report['missing_tabs'])} TAB(s) in mapping not found in file. "
+                f"Affected mapping entries: {validation_report['mapping_entries_affected']}"
+            )
+            # Save mismatch report to logs/
+            import json as _json
+            report_path = f"logs/{base_name}_mapping_mismatch_report.json"
+            os.makedirs("logs", exist_ok=True)
+            with open(report_path, "w", encoding="utf-8") as _f:
+                _json.dump(validation_report, _f, indent=2, ensure_ascii=False)
+            self.logger.warning(f"  [FILE] Mismatch report saved to: {report_path}")
+        else:
+            self.logger.info("  [OK] Mapping validation passed   all TABs match source file")
         
         # Step 2: Get relevant sheets to extract
         self.logger.info("Step 2: Identifying sheets to extract...")
         tabs_from_mapping = self.map_loader.get_tabs_for_file(input_file)
         
         if not tabs_from_mapping or len(tabs_from_mapping) == 0:
-            self.logger.warning("  ⚠️ No specific TAB names found in mapping. Processing first sheet only.")
+            self.logger.warning("  [WARN] No specific TAB names found in mapping. Processing first sheet only.")
             tabs = [None]  # Will read first/default sheet
+            sheet_to_tab = {None: None}
         else:
             # Get actual sheet names from file for fuzzy matching
             import pandas as pd
@@ -110,30 +131,33 @@ class HybridSupervisor:
             actual_sheets = xl.sheet_names
             
             # Match mapping TABs to actual sheets (handle trailing spaces, case differences)
-            tabs = []
+            sheet_to_tab = {}
             for tab_name in tabs_from_mapping:
                 # Try exact match first
                 if tab_name in actual_sheets:
-                    tabs.append(tab_name)
+                    sheet_to_tab[tab_name] = tab_name
                 else:
                     # Try fuzzy match (strip spaces, case-insensitive)
-                    tab_clean = tab_name.strip().lower()
+                    tab_clean = str(tab_name).strip().lower()
                     matched = False
                     for actual_sheet in actual_sheets:
-                        if actual_sheet.strip().lower() == tab_clean:
-                            tabs.append(actual_sheet)
-                            self.logger.info(f"  🔄 Matched '{tab_name}' → '{actual_sheet}'")
+                        if str(actual_sheet).strip().lower() == tab_clean:
+                            sheet_to_tab[actual_sheet] = tab_name
+                            self.logger.info(f"  [MATCH] Matched '{tab_name}' -> '{actual_sheet}'")
                             matched = True
                             break
                     
                     if not matched:
-                        self.logger.warning(f"  ⚠️ Sheet '{tab_name}' not found in file. Skipping.")
+                        self.logger.warning(f"  [WARN] Sheet '{tab_name}' not found in file. Skipping.")
             
-            if not tabs:
-                self.logger.warning("  ⚠️ No matching sheets found. Processing first sheet.")
+            if not sheet_to_tab:
+                self.logger.warning("  [WARN] No matching sheets found. Processing first sheet.")
                 tabs = [None]
+                sheet_to_tab = {None: None}
+            else:
+                tabs = list(sheet_to_tab.keys())
             
-            self.logger.info(f"  📑 Will extract {len(tabs)} sheet(s): {tabs}")
+            self.logger.info(f"  [DOC] Will extract {len(tabs)} sheet(s): {tabs}")
         
         # Step 3: Process each sheet
         all_results = {}
@@ -144,27 +168,34 @@ class HybridSupervisor:
         for tab in tabs:
             sheet_label = tab if tab else "default"
             self.logger.info(f"\n{'='*70}")
-            self.logger.info(f"📄 Processing Sheet: {sheet_label}")
+            self.logger.info(f"[FILE] Processing Sheet: {sheet_label}")
             self.logger.info(f"{'='*70}")
             
-            # Preprocess this specific sheet
-            df_raw = preprocess_excel(input_file, sheet_name=tab)
+            # Preprocess this specific sheet (pass mapping_file for country detection)
+            df_raw = preprocess_excel(input_file, sheet_name=tab, mapping_file=self.mapping_file)
             save_intermediate_grid(df_raw, f"logs/{base_name}_{sheet_label}_preprocessed.xlsx")
             self.logger.info(f"  Shape: {df_raw.shape}")
             
             # Get mappings relevant to this specific tab
+            mapping_tab = sheet_to_tab.get(tab)
             tab_metadata = {}
-            for series_name, meta in self.map_loader.metadata.items():
-                # Filter by both source file AND tab
-                if tab:
-                    if meta.get('tab', '') == tab:
-                        tab_metadata[series_name] = meta
-                else:
-                    # If no tab specified, use all mappings for this file
-                    tab_metadata = self.map_loader.get_mappings_for_file(input_file)
-                    break
             
-            self.logger.info(f"  📊 {len(tab_metadata)} mappings relevant for this sheet")
+            # Normalize tab to match for comparison
+            target_tab_norm = str(mapping_tab).strip().lower() if mapping_tab else None
+            
+            file_mappings = self.map_loader.get_mappings_for_file(input_file)
+            
+            if target_tab_norm:
+                for series_name, meta in file_mappings.items():
+                    # Filter by tab
+                    meta_tab_norm = str(meta.get('tab', '')).strip().lower()
+                    if meta_tab_norm == target_tab_norm:
+                        tab_metadata[series_name] = meta
+            else:
+                # If no tab specified, use all mappings for this file
+                tab_metadata = file_mappings
+            
+            self.logger.info(f"  [DATA] {len(tab_metadata)} mappings relevant for this sheet")
             
             # Prepare metadata
             metadata = {
@@ -178,9 +209,9 @@ class HybridSupervisor:
             
             # Multi-Track Routing & Processing
             processors = {
-                "fast": lambda df, meta: self._fast_track_processor(df, meta, mapping, base_year, input_file),
-                "hybrid": lambda df, meta: self._hybrid_track_processor(df, meta, mapping, base_year, input_file),
-                "full": lambda df, meta: self._full_agentic_processor(df, meta, mapping, base_year, input_file)
+                "fast": lambda df, meta: self._fast_track_processor(df, meta, mapping, base_year, input_file, tab_metadata),
+                "hybrid": lambda df, meta: self._hybrid_track_processor(df, meta, mapping, base_year, input_file, tab_metadata),
+                "full": lambda df, meta: self._full_agentic_processor(df, meta, mapping, base_year, input_file, tab_metadata)
             }
             
             result = self.router.route_and_process(
@@ -196,13 +227,13 @@ class HybridSupervisor:
                 total_processing_time += result.processing_time
                 total_cost += result.cost
                 tracks_used.append(result.track_used)
-                self.logger.info(f"✓ Sheet '{sheet_label}': {len(result.data)} series extracted")
+                self.logger.info(f"[OK] Sheet '{sheet_label}': {len(result.data)} series extracted")
             else:
-                self.logger.error(f"❌ Sheet '{sheet_label}' failed on {result.track_used} track")
+                self.logger.error(f"[ERR] Sheet '{sheet_label}' failed on {result.track_used} track")
         
         # Combine results
         result_data = all_results
-        self.logger.info(f"\n✓ Total extraction: {len(result_data)} series from {len(tabs)} sheet(s)")
+        self.logger.info(f"\n[OK] Total extraction: {len(result_data)} series from {len(tabs)} sheet(s)")
         
         # Create combined result object (use last result as template)
         result.data = result_data
@@ -219,10 +250,10 @@ class HybridSupervisor:
             result.metadata["validation_report"] = validation_report
             
             if is_valid:
-                self.logger.info(f"  ✓ Validation passed "
+                self.logger.info(f"  [OK] Validation passed "
                                f"(confidence: {validation_report.get('confidence_score', 0):.2%})")
             else:
-                self.logger.warning(f"  ⚠ Validation flagged {len(validation_report.get('issues_found', []))} issues")
+                self.logger.warning(f"  [WARN] Validation flagged {len(validation_report.get('issues_found', []))} issues")
         
         # Step 5: Hierarchy Extraction
         if self.hierarchy_extractor and self.map_loader.metadata:
@@ -247,7 +278,7 @@ class HybridSupervisor:
             result.quality_score = audit_report["overall_score"]
             result.metadata["audit_report"] = audit_report
             
-            status = "PASSED ✓" if passed else "FAILED ✗"
+            status = "PASSED [OK]" if passed else "FAILED [ERR]"
             self.logger.info(f"  {status} (Score: {audit_report['overall_score']:.2%})")
             
             if audit_report.get("critical_issues"):
@@ -258,13 +289,13 @@ class HybridSupervisor:
         
         # Step 7: Traditional Validation (legacy compatibility)
         if not self.validator.validate(result_data, result.metadata.get("layout", {})):
-            self.logger.error("❌ Traditional validation failed")
+            self.logger.error("[ERR] Traditional validation failed")
             return None
 
         # Step 8: Write Output
         self.logger.info("Step 7: Writing output...")
         output_path = self.writer.write(result_data, base_name)
-        self.logger.info(f"  ✓ Output written to: {output_path}")
+        self.logger.info(f"  [OK] Output written to: {output_path}")
 
         # Step 9: Auto-save Pattern
         if result.success:
@@ -276,7 +307,7 @@ class HybridSupervisor:
         
         # Step 10: Summary Statistics
         self.logger.info("=" * 70)
-        self.logger.info("📊 PIPELINE SUMMARY")
+        self.logger.info("[DATA] PIPELINE SUMMARY")
         self.logger.info("=" * 70)
         self.logger.info(f"  Track: {result.track_used.upper()}")
         self.logger.info(f"  Processing Time: {result.processing_time:.2f}s")
@@ -290,14 +321,14 @@ class HybridSupervisor:
         
         # Log routing stats
         router_stats = self.router.get_statistics()
-        self.logger.info("\n📈 ROUTING STATISTICS")
+        self.logger.info("\n[STATS] ROUTING STATISTICS")
         self.logger.info(f"  Fast Track: {router_stats.get('fast_track_pct', 0):.1f}%")
         self.logger.info(f"  Hybrid Track: {router_stats.get('hybrid_track_pct', 0):.1f}%")
         self.logger.info(f"  Full Agentic: {router_stats.get('full_agentic_pct', 0):.1f}%")
         
         return output_path
     
-    def _fast_track_processor(self, df, metadata, mapping, base_year, input_file=None):
+    def _fast_track_processor(self, df, metadata, mapping, base_year, input_file, tab_metadata):
         """
         Fast Track: Pure deterministic extraction
         - No AI inference
@@ -309,9 +340,15 @@ class HybridSupervisor:
             "time_axis_index": 1,
             "concept_columns": list(range(1))
         }
-        return self.core.process(df, layout, mapping, self.map_loader.metadata, base_year, source_file=input_file)
+        return self.core.process(
+            df, layout, mapping, 
+            metadata_dict=self.map_loader.metadata, 
+            base_year=base_year, 
+            source_file=input_file,
+            all_metadata=self.map_loader.metadata
+        )
     
-    def _hybrid_track_processor(self, df, metadata, mapping, base_year, input_file):
+    def _hybrid_track_processor(self, df, metadata, mapping, base_year, input_file, tab_metadata):
         """
         Hybrid Track: AI layout + Vector filtering + Deterministic
         - AI for layout detection
@@ -334,9 +371,15 @@ class HybridSupervisor:
                 layout.update(pattern_info)
         
         # Deterministic extraction
-        return self.core.process(df, layout, mapping, self.map_loader.metadata, base_year, source_file=input_file)
+        return self.core.process(
+            df, layout, mapping, 
+            metadata_dict=self.map_loader.metadata, 
+            base_year=base_year, 
+            source_file=input_file,
+            all_metadata=self.map_loader.metadata
+        )
     
-    def _full_agentic_processor(self, df, metadata, mapping, base_year, input_file):
+    def _full_agentic_processor(self, df, metadata, mapping, base_year, input_file, tab_metadata):
         """
         Full Agentic Track: Complete AI pipeline
         - Full intelligence layer
@@ -362,7 +405,13 @@ class HybridSupervisor:
         mapping_to_use, metadata_to_use = self._filter_mapping_metadata(df, layout, mapping)
         
         # Deterministic extraction
-        return self.core.process(df, layout, mapping_to_use, metadata_to_use, base_year, source_file=input_file)
+        return self.core.process(
+            df, layout, mapping_to_use, 
+            metadata_dict=metadata_to_use, 
+            base_year=base_year, 
+            source_file=input_file,
+            all_metadata=self.map_loader.metadata
+        )
     
     def _filter_mapping_metadata(self, df_raw, layout, mapping):
         """Filter mapping to relevant entries based on sheet concepts"""
@@ -502,7 +551,7 @@ class HybridSupervisor:
             
             for i, col in enumerate(headers[:time_axis_index]):
                 col_lower = str(col).lower()
-                if 'ponderación' in col_lower or 'weight' in col_lower or 'índice' in col_lower:
+                if 'ponderaci n' in col_lower or 'weight' in col_lower or ' ndice' in col_lower:
                     index_col_desc = f"Column {i} - {col} (metadata), NORMAL DATA"
                 else:
                     num_concepts += 1
@@ -552,7 +601,7 @@ class HybridSupervisor:
                 orientation=orientation
             )
             
-            self.logger.info(f"✓ Pattern saved: {base_name}")
+            self.logger.info(f"[OK] Pattern saved: {base_name}")
             
         except Exception as e:
-            self.logger.warning(f"⚠ Could not auto-save pattern: {str(e)}")
+            self.logger.warning(f"[WARN] Could not auto-save pattern: {str(e)}")

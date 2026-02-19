@@ -14,17 +14,15 @@ class PatternLibrary:
         """Load pattern definitions from Excel file."""
         # If no pattern file specified, skip loading
         if not self.pattern_file:
-            print(f"ℹ️ No pattern file specified. Skipping pattern library.")
+            print(f"[INFO] No pattern file specified. Skipping pattern library.")
             return []
         
-        # Check if file exists
         if not os.path.exists(self.pattern_file):
-            print(f"⚠️ Pattern file not found: {self.pattern_file}. Skipping pattern library.")
+            print(f"[WARN] Pattern file not found: {self.pattern_file}. Skipping pattern library.")
             return []
         
-        # Check if file is empty
-        if os.path.getsize(self.pattern_file) == 0:
-            print(f"⚠️ Pattern file is empty: {self.pattern_file}. Skipping pattern library.")
+        if not os.path.exists(self.pattern_file) or os.path.getsize(self.pattern_file) == 0:
+            print(f"[WARN] Pattern file is empty: {self.pattern_file}. Skipping pattern library.")
             return []
             
         try:
@@ -40,9 +38,9 @@ class PatternLibrary:
                 }
                 self.patterns.append(pattern)
                 
-            print(f"📚 Loaded {len(self.patterns)} patterns from library.")
+            print(f"[INFO] Loaded {len(self.patterns)} patterns from library.")
         except Exception as e:
-            print(f"⚠️ Could not load pattern file: {str(e)}. Continuing without patterns.")
+            print(f"[WARN] Could not load pattern file: {str(e)}. Continuing without patterns.")
         
         return self.patterns
     
@@ -123,12 +121,11 @@ class PatternLibrary:
                 df = pd.read_excel(self.pattern_file, engine='openpyxl')
                 existing_patterns = df.to_dict('records')
             except Exception as e:
-                print(f"⚠️ Could not load existing patterns: {str(e)}")
+                print(f"[WARN] Could not load existing patterns: {str(e)}")
         
-        # Check if pattern already exists
         for pattern in existing_patterns:
             if pattern.get("New Pattern") == pattern_name:
-                print(f"ℹ️ Pattern '{pattern_name}' already exists. Skipping.")
+                print(f"[INFO] Pattern '{pattern_name}' already exists. Skipping.")
                 return False
         
         # Add new pattern
@@ -137,7 +134,7 @@ class PatternLibrary:
         # Save to Excel
         df = pd.DataFrame(existing_patterns)
         df.to_excel(self.pattern_file, index=False, engine='openpyxl')
-        print(f"✅ Added pattern '{pattern_name}' to library.")
+        print(f"[OK] Added pattern '{pattern_name}' to library.")
         print(f"   Update Name: {update_name}")
         print(f"   Concepts: {num_concepts}")
         return True

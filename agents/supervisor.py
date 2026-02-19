@@ -24,7 +24,7 @@ class ParserSupervisor:
         self.enable_hybrid = enable_hybrid
         
         if self.enable_hybrid:
-            self.logger.info("🚀 Initializing Hybrid Agentic Architecture")
+            self.logger.info("[START] Initializing Hybrid Agentic Architecture")
             self.router = MultiTrackRouter(enable_cache=True, enable_feedback=True)
             self.semantic_validator = SemanticValidator()
             self.hierarchy_extractor = HierarchyExtractor()
@@ -68,7 +68,7 @@ class ParserSupervisor:
         - Quality auditing
         - Feedback loop learning
         """
-        self.logger.info("🚀 Running Hybrid Agentic Pipeline")
+        self.logger.info("[START] Running Hybrid Agentic Pipeline")
 
         base_name = os.path.splitext(os.path.basename(input_file))[0]
 
@@ -142,7 +142,7 @@ class ParserSupervisor:
             result.quality_score = audit_report["overall_score"]
             result.metadata["audit_report"] = audit_report
             
-            self.logger.info(f"Quality Audit: {'PASSED ✓' if passed else 'FAILED ✗'} "
+            self.logger.info(f"Quality Audit: {'PASSED [OK]' if passed else 'FAILED [ERR]'} "
                            f"(Score: {audit_report['overall_score']:.2%})")
             
             # Print audit summary
@@ -361,7 +361,7 @@ class ParserSupervisor:
             # Count concept columns (non-time-series columns)
             for i, col in enumerate(headers[:time_axis_index]):
                 col_lower = str(col).lower()
-                if 'ponderación' in col_lower or 'weight' in col_lower or 'índice' in col_lower:
+                if 'ponderaci n' in col_lower or 'weight' in col_lower or ' ndice' in col_lower:
                     index_col_desc = f"Column {i} - {col} (metadata), NORMAL DATA"
                 else:
                     num_concepts += 1
@@ -416,5 +416,5 @@ class ParserSupervisor:
             )
             
         except Exception as e:
-            print(f"⚠️ Could not auto-save pattern: {str(e)}")
+            print(f"[WARN] Could not auto-save pattern: {str(e)}")
             # Don't fail the entire pipeline if pattern saving fails

@@ -48,12 +48,12 @@ class SmartSampler:
         max_row = ws.max_row
         max_col = ws.max_column
         
-        print(f"📐 File dimensions: {max_row} rows × {max_col} columns")
+        print(f"  File dimensions: {max_row} rows   {max_col} columns")
         
         samples = {}
         
         # Top-left corner (usually contains headers + first data rows)
-        print(f"📍 Sampling top-left corner ({self.sample_size + 5} rows × {min(max_col, 20)} cols)...")
+        print(f"  Sampling top-left corner ({self.sample_size + 5} rows   {min(max_col, 20)} cols)...")
         samples['top_left'] = self._extract_region(
             ws, 
             1, 1, 
@@ -64,7 +64,7 @@ class SmartSampler:
         # Middle section (representative data)
         if max_row > 20:
             mid_row = max_row // 2
-            print(f"📍 Sampling middle section (rows {mid_row-2} to {mid_row+2})...")
+            print(f"  Sampling middle section (rows {mid_row-2} to {mid_row+2})...")
             samples['middle'] = self._extract_region(
                 ws, 
                 max(mid_row - 2, 1), 
@@ -77,7 +77,7 @@ class SmartSampler:
         
         # Bottom section (check for summaries/totals)
         if max_row > 10:
-            print(f"📍 Sampling bottom section (last {min(3, max_row)} rows)...")
+            print(f"  Sampling bottom section (last {min(3, max_row)} rows)...")
             samples['bottom'] = self._extract_region(
                 ws,
                 max(max_row - 3, 1),
@@ -90,7 +90,7 @@ class SmartSampler:
         
         wb.close()
         
-        print(f"✅ Sampling complete - loaded {sum(len(df) for df in samples.values())} total rows (vs {max_row} in file)")
+        print(f"[OK] Sampling complete - loaded {sum(len(df) for df in samples.values())} total rows (vs {max_row} in file)")
         
         return samples
     
@@ -153,7 +153,7 @@ class SmartSampler:
         signature_parts.append(f"size:{row_range}")
         
         signature = '|'.join(signature_parts)
-        print(f"🔑 Generated signature: {signature}")
+        print(f"  Generated signature: {signature}")
         
         return signature
     
@@ -169,8 +169,8 @@ class SmartSampler:
             (is_known, pattern_info) tuple
         """
         if signature in known_patterns:
-            print(f"✅ Matched known pattern: {signature}")
+            print(f"[OK] Matched known pattern: {signature}")
             return True, known_patterns[signature]
         
-        print(f"⚠️  Unknown pattern - will use AI analysis")
+        print(f"[WARN]  Unknown pattern - will use AI analysis")
         return False, {}

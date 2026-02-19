@@ -399,13 +399,13 @@ class QualityAuditor:
         lines.append("=" * 70)
         lines.append(f"Timestamp: {audit_report['timestamp']}")
         lines.append(f"Overall Score: {audit_report['overall_score']:.2%}")
-        lines.append(f"Status: {'PASSED ✓' if audit_report['passed'] else 'FAILED ✗'}")
+        lines.append(f"Status: {'PASSED [OK]' if audit_report['passed'] else 'FAILED [ERR]'}")
         lines.append("")
         
         lines.append("Quality Dimensions:")
         lines.append("-" * 70)
         for dim, results in audit_report["dimensions"].items():
-            status = "✓" if results["score"] >= 0.8 else "✗"
+            status = "[OK]" if results["score"] >= 0.8 else "[ERR]"
             lines.append(f"  {status} {dim.replace('_', ' ').title()}: {results['score']:.2%}")
         
         lines.append("")
@@ -414,14 +414,14 @@ class QualityAuditor:
             lines.append("Critical Issues:")
             lines.append("-" * 70)
             for issue in audit_report["critical_issues"]:
-                lines.append(f"  ✗ {issue}")
+                lines.append(f"  [ERR] {issue}")
             lines.append("")
         
         if audit_report["warnings"]:
             lines.append("Warnings:")
             lines.append("-" * 70)
             for warning in audit_report["warnings"][:10]:  # Show max 10
-                lines.append(f"  ⚠ {warning}")
+                lines.append(f"  [WARN] {warning}")
             
             if len(audit_report["warnings"]) > 10:
                 lines.append(f"  ... and {len(audit_report['warnings']) - 10} more warnings")

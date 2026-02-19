@@ -34,16 +34,24 @@ def main():
     
     # Configuration
     mapping_file = "config/Argentina_Map_Updated.xlsx"
-    pattern_file = "config/Patterns.xlsx"
-    
-    # Sample input files
+    pattern_file = "config/Patterns.xlsx" if os.path.exists("config/Patterns.xlsx") else None
+
+    # Sample input files   use files that actually exist in data/
     test_files = [
-        "data/GII-CO-Labor-Index-anex-EMMET-TotalNacional-nov2025.xlsx",
-        # Add more test files here
+        f for f in [
+            "data/sample.xlsx",
+            "data/sample1.xlsx",
+            "data/sample2.xlsx",
+        ] if os.path.exists(f)
     ]
-    
+
+    if not test_files:
+        print("[WARN] No input files found in data/. Please place Excel files in the data/ folder.")
+        print("    Expected: data/sample.xlsx, data/sample1.xlsx, or data/sample2.xlsx")
+        return
+
     # Initialize hybrid supervisor
-    print("🚀 Initializing Hybrid Agentic Supervisor...")
+    print("[INIT] Initializing Hybrid Agentic Supervisor...")
     print()
     
     supervisor = HybridSupervisor(
@@ -52,7 +60,7 @@ def main():
         enable_hybrid=True  # Enable multi-track routing
     )
     
-    print("✓ Hybrid supervisor initialized")
+    print("[OK] Hybrid supervisor initialized")
     print()
     
     # Process each file
@@ -60,7 +68,7 @@ def main():
     
     for input_file in test_files:
         if not os.path.exists(input_file):
-            logger.warning(f"⚠ File not found: {input_file}")
+            logger.warning(f"[WARN] File not found: {input_file}")
             continue
         
         print(f"\n{'=' * 80}")
@@ -72,21 +80,21 @@ def main():
             output_path = supervisor.run_pipeline(input_file, base_year=2024)
             
             if output_path:
-                print(f"\n✓ SUCCESS: Output saved to {output_path}")
+                print(f"\n[OK] SUCCESS: Output saved to {output_path}")
                 results.append({
                     "file": input_file,
                     "status": "success",
                     "output": output_path
                 })
             else:
-                print(f"\n✗ FAILED: Processing failed")
+                print(f"\n[ERR] FAILED: Processing failed")
                 results.append({
                     "file": input_file,
                     "status": "failed"
                 })
         
         except Exception as e:
-            print(f"\n✗ ERROR: {str(e)}")
+            print(f"\n[ERR] ERROR: {str(e)}")
             logger.error(f"Processing error: {e}", exc_info=True)
             results.append({
                 "file": input_file,
@@ -104,9 +112,9 @@ def main():
     error_count = sum(1 for r in results if r["status"] == "error")
     
     print(f"\nTotal Files: {len(results)}")
-    print(f"  ✓ Successful: {success_count}")
-    print(f"  ✗ Failed: {failed_count}")
-    print(f"  ⚠ Errors: {error_count}")
+    print(f"  [OK] Successful: {success_count}")
+    print(f"  [ERR] Failed: {failed_count}")
+    print(f"  [WARN] Errors: {error_count}")
     
     # Routing statistics
     print("\n" + "-" * 80)
@@ -163,8 +171,11 @@ def demonstrate_components():
     
     analyzer = ComplexityAnalyzer()
     
-    test_file = "data/GII-CO-Labor-Index-anex-EMMET-TotalNacional-nov2025.xlsx"
-    if os.path.exists(test_file):
+    test_file = next(
+        (f for f in ["data/sample.xlsx", "data/sample1.xlsx", "data/sample2.xlsx"]
+         if os.path.exists(f)), None
+    )
+    if test_file:
         df = preprocess_excel(test_file)
         track, score, details = analyzer.analyze(test_file, df)
         
@@ -188,7 +199,7 @@ def demonstrate_components():
     if patterns:
         print(f"\nTop Patterns:")
         for pattern in patterns[:3]:
-            print(f"  • {pattern['file_pattern']}: "
+            print(f"    {pattern['file_pattern']}: "
                   f"{pattern['confidence']:.2%} confidence "
                   f"({pattern['success_count']} successes)")
     
@@ -224,12 +235,12 @@ if __name__ == "__main__":
         # Process specific file
         supervisor = HybridSupervisor(
             mapping_file="config/Argentina_Map_Updated.xlsx",
-            pattern_file="config/Patterns.xlsx",
+            pattern_file="config/Patterns.xlsx" if os.path.exists("config/Patterns.xlsx") else None,
             enable_hybrid=True
         )
         output = supervisor.run_pipeline(args.file)
         if output:
-            print(f"✓ Output: {output}")
+            print(f"[OK] Output: {output}")
     else:
         # Run main demo
         main()

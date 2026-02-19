@@ -19,7 +19,7 @@ class OutputWriter:
             subfolder: Optional subfolder (e.g., "review_queue" for low-confidence results)
         """
         print(f"\n{'='*60}")
-        print(f"📦 STEP 6: OUTPUT GENERATION")
+        print(f"  STEP 6: OUTPUT GENERATION")
         print(f"{'='*60}")
         
         # Create subfolder if specified
@@ -27,7 +27,7 @@ class OutputWriter:
             output_path = os.path.join(self.output_dir, subfolder)
             if not os.path.exists(output_path):
                 os.makedirs(output_path)
-            print(f"📁 Saving to subfolder: {subfolder}/")
+            print(f"  Saving to subfolder: {subfolder}/")
         else:
             output_path = self.output_dir
         
@@ -37,12 +37,12 @@ class OutputWriter:
         json_path = os.path.join(output_path, f"{base_filename}_{timestamp}.json")
         with open(json_path, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
-        print(f"✅ JSON output saved: {json_path}")
-        print(f"   📊 Total series: {len(data)}")
+        print(f"[OK] JSON output saved: {json_path}")
+        print(f"   [DATA] Total series: {len(data)}")
         
         # Calculate total data points
         total_points = sum(len(series['values']) for series in data.values() if 'values' in series)
-        print(f"   📈 Total data points: {total_points}")
+        print(f"   [STATS] Total data points: {total_points}")
         
         # 2. Save Excel (optional, for human readability)
         excel_path = os.path.join(output_path, f"{base_filename}_{timestamp}.xlsx")
@@ -68,8 +68,8 @@ class OutputWriter:
             if rows:
                 df = pd.DataFrame(rows)
                 df.to_excel(excel_path, index=False)
-                print(f"✅ Excel output saved: {excel_path}")
+                print(f"[OK] Excel output saved: {excel_path}")
             else:
-                print(f"⚠️ No data to save to Excel")
+                print(f"[WARN] No data to save to Excel")
         except Exception as e:
-            print(f"⚠️ Could not save Excel: {str(e)}")
+            print(f"[WARN] Could not save Excel: {str(e)}")

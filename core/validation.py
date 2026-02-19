@@ -34,7 +34,7 @@ class Validator:
             If basic validation only: boolean
         """
         print(f"\n{'='*60}")
-        print(f"🚨 STEP 5: VALIDATION & GUARDRAILS")
+        print(f"  STEP 5: VALIDATION & GUARDRAILS")
         print(f"{'='*60}")
         
         # Run enhanced validation if enabled
@@ -58,37 +58,37 @@ class Validator:
         
         # 1. Check confidence from layout detection
         confidence = layout.get('confidence', 1.0)
-        print(f"📊 Layout detection confidence: {confidence:.2%}")
+        print(f"[DATA] Layout detection confidence: {confidence:.2%}")
         if confidence < self.confidence_threshold:
-            print(f"⚠️ Low confidence detected: {confidence:.2%}")
+            print(f"[WARN] Low confidence detected: {confidence:.2%}")
         
         # 2. Validate data structure
         if not isinstance(data, dict):
-            print("❌ Validation Error: Data is not a dictionary.")
+            print("[ERR] Validation Error: Data is not a dictionary.")
             return False
         
         if len(data) == 0:
-            print("❌ Validation Error: No series data extracted.")
+            print("[ERR] Validation Error: No series data extracted.")
             return False
         
-        print(f"✅ Found {len(data)} series")
+        print(f"[OK] Found {len(data)} series")
         
         # 3. Validate each series
         for series_code, series_data in data.items():
             if 'values' not in series_data:
-                print(f"⚠️ Warning: Series '{series_code}' missing 'values' key")
+                print(f"[WARN] Warning: Series '{series_code}' missing 'values' key")
                 continue
             
             values = series_data['values']
             if len(values) == 0:
-                print(f"⚠️ Warning: Series '{series_code}' has no values")
+                print(f"[WARN] Warning: Series '{series_code}' has no values")
                 continue
             
             # Check for series-specific validation rules
             if self.map_loader:
                 self._validate_series_rules(series_code, values)
         
-        print(f"✅ Validation passed for {len(data)} series.")
+        print(f"[OK] Validation passed for {len(data)} series.")
         return True
     
     def _validate_series_rules(self, series_code, values):
@@ -113,7 +113,7 @@ class Validator:
         # Check for no-change scenarios
         if rules.get('no_change_action') == 'Stop':
             if len(set(value_list)) == 1:
-                print(f"⚠️ Alert: Series '{series_code}' has no variation in values.")
+                print(f"[WARN] Alert: Series '{series_code}' has no variation in values.")
         
         # Check for gaps in dates
         if rules.get('gaps_action') == 'Alert':
@@ -123,7 +123,7 @@ class Validator:
                 gaps = date_objs.to_series().diff().dt.days
                 max_gap = gaps.max()
                 if max_gap > 90:
-                    print(f"⚠️ Alert: Series '{series_code}' has date gaps > 90 days (max: {max_gap} days).")
+                    print(f"[WARN] Alert: Series '{series_code}' has date gaps > 90 days (max: {max_gap} days).")
         
         # Check threshold values
         threshold = rules.get('threshold')
@@ -131,6 +131,6 @@ class Validator:
             try:
                 threshold_val = float(threshold)
                 if any(v > threshold_val for v in value_list):
-                    print(f"⚠️ Alert: Series '{series_code}' exceeds threshold {threshold_val}.")
+                    print(f"[WARN] Alert: Series '{series_code}' exceeds threshold {threshold_val}.")
             except:
                 pass

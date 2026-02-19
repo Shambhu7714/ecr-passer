@@ -1,0 +1,59 @@
+{
+    "country_code": "CO",
+    "country_name": "Colombia",
+    "language": "es",
+    "mapping_file": "config/Colombia_Map.xlsx",
+    "header_detection_keywords": [
+        "Código",
+        "Actividad",
+        "Ponderación",
+        "Grupo",
+        "Rama",
+        "CIIU",
+        "Año",
+        "A o",
+        "Mes",
+        "Clases"
+    ],
+    "footer_keywords": [
+        "Fuente:",
+        "Nota:",
+        "FUENTE:",
+        "NOTA:",
+        "*"
+    ],
+    "code_column_names": [
+        "Código",
+        "Codigo",
+        "Code",
+        "Actividad"
+    ],
+    "description_column_names": [
+        "Grupo",
+        "Actividad",
+        "Descripción",
+        "Description"
+    ],
+    "time_keywords": [
+        "enero",
+        "febrero",
+        "marzo",
+        "abril",
+        "mayo",
+        "junio",
+        "julio",
+        "agosto",
+        "septiembre",
+        "octubre",
+        "noviembre",
+        "diciembre",
+        "q1",
+        "q2",
+        "q3",
+        "q4",
+        "trimestre"
+    ],
+    "code_pad_length": 8,
+    "aggregation_strategy": "mean",
+    "group_code_prefix_length": 2
+}

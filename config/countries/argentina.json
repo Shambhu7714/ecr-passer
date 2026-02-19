@@ -1,0 +1,18 @@
+{
+  "country_code": "AR",
+  "country_name": "Argentina",
+  "language": "es",
+  "mapping_file": "config/Argentina_Map_Updated.xlsx",
+  "header_detection_keywords": ["Código", "División", "Ponderación", "Grupo", "Sección"],
+  "footer_keywords": ["Fuente:", "Nota:", "FUENTE:", "NOTA:", "*", "Trimestre"],
+  "code_column_names": ["Código", "Codigo", "Code", "División"],
+  "description_column_names": ["Grupo", "División", "Descripción", "Description"],
+  "time_keywords": [
+    "enero", "febrero", "marzo", "abril", "mayo", "junio",
+    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+    "q1", "q2", "q3", "q4", "trimestre"
+  ],
+  "code_pad_length": 8,
+  "aggregation_strategy": "mean",
+  "group_code_prefix_length": 2
+}

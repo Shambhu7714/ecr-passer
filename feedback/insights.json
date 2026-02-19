@@ -1,0 +1,86 @@
+{
+  "successful_patterns": {},
+  "problematic_patterns": {
+    "sample|hybrid": {
+      "file_pattern": "sample",
+      "failed_track": "hybrid",
+      "failure_count": 2,
+      "errors": []
+    },
+    "sample|full": {
+      "file_pattern": "sample",
+      "failed_track": "full",
+      "failure_count": 3,
+      "errors": []
+    },
+    "anex-emmet-totalnacional-nov2025|hybrid": {
+      "file_pattern": "anex-emmet-totalnacional-nov2025",
+      "failed_track": "hybrid",
+      "failure_count": 2,
+      "errors": []
+    },
+    "anex-emmet -totalnacional-nov2025|hybrid": {
+      "file_pattern": "anex-emmet -totalnacional-nov2025",
+      "failed_track": "hybrid",
+      "failure_count": 1,
+      "errors": []
+    },
+    "anex-emmet-totalnacional-nov2025|full": {
+      "file_pattern": "anex-emmet-totalnacional-nov2025",
+      "failed_track": "full",
+      "failure_count": 36,
+      "errors": []
+    },
+    "anex-ipc-divisiones-ingresos-total-dic2025|hybrid": {
+      "file_pattern": "anex-ipc-divisiones-ingresos-total-dic2025",
+      "failed_track": "hybrid",
+      "failure_count": 2,
+      "errors": []
+    },
+    "anex-ipc-divisiones-ingresos-total-dic2025|full": {
+      "file_pattern": "anex-ipc-divisiones-ingresos-total-dic2025",
+      "failed_track": "full",
+      "failure_count": 19,
+      "errors": []
+    },
+    "anex-emmet-totalnacional-feb2025|hybrid": {
+      "file_pattern": "anex-emmet-totalnacional-feb2025",
+      "failed_track": "hybrid",
+      "failure_count": 2,
+      "errors": []
+    },
+    "anex-emmet-totalnacional-feb2025|full": {
+      "file_pattern": "anex-emmet-totalnacional-feb2025",
+      "failed_track": "full",
+      "failure_count": 4,
+      "errors": []
+    },
+    "anex-chv-ivtrim2024|hybrid": {
+      "file_pattern": "anex-chv-ivtrim2024",
+      "failed_track": "hybrid",
+      "failure_count": 2,
+      "errors": []
+    },
+    "anex-ipc-ene2026|hybrid": {
+      "file_pattern": "anex-ipc-ene2026",
+      "failed_track": "hybrid",
+      "failure_count": 2,
+      "errors": []
+    },
+    "anex-ipc-ene2026|full": {
+      "file_pattern": "anex-ipc-ene2026",
+      "failed_track": "full",
+      "failure_count": 15,
+      "errors": []
+    },
+    "anex-chv-ivtrim2024|full": {
+      "file_pattern": "anex-chv-ivtrim2024",
+      "failed_track": "full",
+      "failure_count": 9,
+      "errors": []
+    }
+  },
+  "error_patterns": {},
+  "track_preferences": {},
+  "optimization_rules": []
+}

@@ -54,7 +54,7 @@ class ComplexityAnalyzer:
         if self.cache_manager:
             cached_pattern = self.cache_manager.get_pattern(file_path, sheet_name)
             if cached_pattern:
-                logger.info(f"✓ Known pattern found in cache - routing to FAST track")
+                logger.info(f"[OK] Known pattern found in cache - routing to FAST track")
                 return ComplexityTrack.FAST, 0, {
                     "reason": "known_pattern",
                     "cached": True,

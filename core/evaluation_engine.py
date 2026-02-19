@@ -66,39 +66,39 @@ class EvaluationEngine:
         
         # Run all validation checks
         print("\n" + "="*80)
-        print("📊 COMPREHENSIVE EVALUATION")
+        print("[DATA] COMPREHENSIVE EVALUATION")
         print("="*80)
         
         # 1. Format Validation
-        print("\n1️⃣ Format Validation...")
+        print("\n1  Format Validation...")
         format_score, format_issues = self._validate_format(result_data, layout)
         scores['format'] = format_score
         all_issues.extend(format_issues)
         print(f"   Score: {format_score:.1%}")
         
         # 2. Date Continuity Validation
-        print("\n2️⃣ Date Continuity Validation...")
+        print("\n2  Date Continuity Validation...")
         dates_score, dates_issues = self._validate_dates(result_data)
         scores['dates'] = dates_score
         all_issues.extend(dates_issues)
         print(f"   Score: {dates_score:.1%}")
         
         # 3. Value Range Validation
-        print("\n3️⃣ Value Range Validation...")
+        print("\n3  Value Range Validation...")
         ranges_score, ranges_issues = self._validate_ranges(result_data)
         scores['ranges'] = ranges_score
         all_issues.extend(ranges_issues)
         print(f"   Score: {ranges_score:.1%}")
         
         # 4. Mapping Completeness Validation
-        print("\n4️⃣ Mapping Completeness Validation...")
+        print("\n4  Mapping Completeness Validation...")
         mappings_score, mappings_issues = self._validate_mappings(result_data, layout)
         scores['mappings'] = mappings_score
         all_issues.extend(mappings_issues)
         print(f"   Score: {mappings_score:.1%}")
         
         # 5. Data Completeness Validation
-        print("\n5️⃣ Data Completeness Validation...")
+        print("\n5  Data Completeness Validation...")
         completeness_score, completeness_issues = self._validate_completeness(result_data)
         scores['completeness'] = completeness_score
         all_issues.extend(completeness_issues)
@@ -111,13 +111,13 @@ class EvaluationEngine:
         is_valid = confidence >= 0.90 and format_score >= 0.80
         
         print("\n" + "="*80)
-        print(f"🎯 OVERALL CONFIDENCE: {confidence:.1%}")
+        print(f"  OVERALL CONFIDENCE: {confidence:.1%}")
         print(f"   Format:       {scores['format']:.1%} (weight: {self.weights['format']:.0%})")
         print(f"   Dates:        {scores['dates']:.1%} (weight: {self.weights['dates']:.0%})")
         print(f"   Ranges:       {scores['ranges']:.1%} (weight: {self.weights['ranges']:.0%})")
         print(f"   Mappings:     {scores['mappings']:.1%} (weight: {self.weights['mappings']:.0%})")
         print(f"   Completeness: {scores['completeness']:.1%} (weight: {self.weights['completeness']:.0%})")
-        print(f"\n{'✅ PASSED' if is_valid else '⚠️ NEEDS REVIEW'}")
+        print(f"\n{'[OK] PASSED' if is_valid else '[WARN] NEEDS REVIEW'}")
         print("="*80 + "\n")
         
         return is_valid, confidence, all_issues
@@ -175,7 +175,7 @@ class EvaluationEngine:
             
             # Try to parse dates
             try:
-                # Parse dates flexibly (support YYYY-MM, 'Jan 2025', 'Índice, Enero, 2025', etc.)
+                # Parse dates flexibly (support YYYY-MM, 'Jan 2025', ' ndice, Enero, 2025', etc.)
                 parsed_dates = []
                 for date_str in dates:
                     if not isinstance(date_str, str):

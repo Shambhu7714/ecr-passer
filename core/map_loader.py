@@ -1,6 +1,7 @@
 import pandas as pd
 import json
 import os
+from typing import Dict, List, Tuple
 
 class MapLoader:
     """
@@ -17,7 +18,7 @@ class MapLoader:
         
     def load(self):
         """Loads the mapping configuration."""
-        print(f"📂 Loading mapping file: {self.mapping_file}")
+        print(f"[INFO] Loading mapping file: {self.mapping_file}")
         
         if self.mapping_file.endswith('.json'):
             return self._load_json()
@@ -48,11 +49,10 @@ class MapLoader:
                     'no_change_action': series_info.get('no_change_action', 'Stop'),
                     'gaps_action': series_info.get('gaps_action', 'Alert'),
                 }
-        else:
-            # Simple mapping (header -> series code)
+        # Simple mapping (header -> series code)
             self.mapping_data = data
         
-        print(f"✅ JSON mapping loaded with {len(self.mapping_data)} definitions.")
+        print(f"[OK] JSON mapping loaded with {len(self.mapping_data)} definitions.")
         return self.mapping_data
     
     def _load_excel(self):
@@ -68,12 +68,23 @@ class MapLoader:
         if not sheet_name:
             raise ValueError("Could not find mapping sheet in Excel file.")
         
-        df = pd.read_excel(self.mapping_file, sheet_name=sheet_name)
+        df_full = pd.read_excel(self.mapping_file, sheet_name=sheet_name, header=None)
+        
+        # Find header row
+        header_row_idx = 0
+        for idx, row in df_full.iterrows():
+            row_str = ' '.join([str(x) for x in row.values if pd.notna(x)])
+            if 'Update Name' in row_str or 'SERIES CODE' in row_str:
+                header_row_idx = idx
+                break
+        
+        # Re-read with correct header
+        df = pd.read_excel(self.mapping_file, sheet_name=sheet_name, header=header_row_idx)
         
         # Parse the comprehensive mapping structure
         self._parse_comprehensive_mapping(df)
         
-        print(f"✅ Excel mapping loaded with {len(self.mapping_data)} series definitions.")
+        print(f"[OK] Excel mapping loaded with {len(self.mapping_data)} series definitions.")
         return self.mapping_data
     
     def _find_mapping_sheet(self, sheet_names):
@@ -152,7 +163,7 @@ class MapLoader:
         """Validates if required columns from mapping exist in headers."""
         missing = [col for col in self.mapping_data.keys() if col not in headers]
         if missing:
-            print(f"⚠️ Warning: Missing mapped columns in input: {missing[:5]}...")  # Show first 5
+            print(f"[WARN] Warning: Missing mapped columns in input: {missing[:5]}...")  # Show first 5
         return len(missing) == 0
     
     def get_metadata(self, series_name):
@@ -167,49 +178,220 @@ class MapLoader:
         """Returns all series codes."""
         return list(self.mapping_data.values())
     
+    def _normalize_filename(self, name: str) -> str:
+        """Normalize a filename for flexible matching: lowercase + collapse all spaces."""
+        if not name: return ""
+        import re
+        # Remove extension for comparison
+        name = os.path.splitext(name)[0]
+        return re.sub(r'\s+', '', name.lower().strip())
+
+    def _is_filename_match(self, file1: str, file2: str) -> bool:
+        """Robust but strict filename matching."""
+        if not file1 or not file2: return False
+        
+        n1 = self._normalize_filename(file1)
+        n2 = self._normalize_filename(file2)
+        
+        # 1. Exact match after normalization
+        if n1 == n2: return True
+        
+        # 2. Fuzzy match: Check if core parts match
+        import re
+        parts1 = set(re.findall(r'[a-z0-9]+', n1))
+        parts2 = set(re.findall(r'[a-z0-9]+', n2))
+        
+        if not parts1 or not parts2: return False
+        
+        # Remove common small words/extensions that might cause false positives
+        noise = {'xlsx', 'xls', 'xlsm', 'anex', 'anexo', 'cuadros', 'total', 'series', 'data', 'cuadro', 'anexos', 'enlace'}
+        p1_sig = parts1 - noise
+        p2_sig = parts2 - noise
+        
+        if not p1_sig or not p2_sig:
+            common = parts1.intersection(parts2)
+            ratio = len(common) / max(len(parts1), len(parts2)) if parts1 or parts2 else 0
+            return ratio > 0.8
+        
+        common_sig = p1_sig.intersection(p2_sig)
+        
+        # 3. Subset check: If all significant parts of one are in the other
+        # This handles 'anex-EMMET...' vs 'anex-EMMET..._2026-02-19...'
+        if len(p1_sig) > 0 and p1_sig.issubset(p2_sig):
+            return True
+        if len(p2_sig) > 0 and p2_sig.issubset(p1_sig):
+            return True
+            
+        # 4. High overlap check
+        ratio = len(common_sig) / max(len(p1_sig), len(p2_sig))
+        return ratio >= 0.6
+
     def get_mappings_for_file(self, filename):
         """Get all mapping metadata entries for a specific source file.
-        
+
+        Uses space-insensitive matching so 'anex-emmet -totalnacional-nov2025.xlsx'
+        (with a stray space in the mapping) matches the real file
+        'anex-emmet-totalnacional-nov2025.xlsx'.
+
         Args:
             filename: Name of the source file (can be full path or just basename)
-        
+
         Returns:
             Dictionary of filtered metadata for series matching this source file
         """
-        # Extract just the filename from path if full path provided
         import os
-        basename = os.path.basename(filename).lower()
-        
-        # Filter metadata to only entries matching this source file
+        basename_norm = self._normalize_filename(os.path.basename(filename))
+
         filtered_metadata = {}
         for series_name, meta in self.metadata.items():
-            source_file = str(meta.get('source_file', '')).lower().strip()
-            
-            # Match if source file contains the filename (flexible matching)
-            if source_file and basename in source_file:
+            source_file = str(meta.get('source_file', ''))
+            if self._is_filename_match(filename, source_file):
                 filtered_metadata[series_name] = meta
-        
-        self.logger.info(f"📂 Filtered {len(filtered_metadata)} mappings for file: {basename}")
+
+        self.logger.info(
+            f"[INFO] Filtered {len(filtered_metadata)} mappings for file: "
+            f"{os.path.basename(filename)}"
+        )
         return filtered_metadata
     
     def get_tabs_for_file(self, filename):
         """Get list of TAB names to extract from the source file.
-        
+
+        Uses space-insensitive matching (same as get_mappings_for_file).
+
         Args:
             filename: Name of the source file
-        
+
         Returns:
             List of unique tab/sheet names to process
         """
         import os
-        basename = os.path.basename(filename).lower()
-        
+        basename_norm = self._normalize_filename(os.path.basename(filename))
+
         tabs = set()
         for series_name, meta in self.metadata.items():
-            source_file = str(meta.get('source_file', '')).lower().strip()
-            if source_file and basename in source_file:
-                tab = meta.get('tab', '')
-                if tab and tab != '':
+            source_file = str(meta.get('source_file', ''))
+            if self._is_filename_match(filename, source_file):
+                tab = str(meta.get('tab', '')).strip()
+                if tab and tab.lower() not in ('', 'nan', 'none'):
                     tabs.add(tab)
-        
+
+        self.logger.info(
+            f"[INFO] Found {len(tabs)} TAB(s) for file '{os.path.basename(filename)}': {sorted(tabs)}"
+        )
         return sorted(list(tabs))
+
+    def validate_mapping_vs_source(self, input_file: str) -> Tuple[bool, Dict]:
+        """
+        Problem 2 Fix: Cross-check mapping TAB names and SOURCE FILE values
+        against the actual input Excel file.
+
+        Returns:
+            (is_valid, report) where report contains:
+              - matched_tabs: list of TAB names found in both mapping and file
+              - missing_tabs: TAB names in mapping but NOT in file
+              - extra_sheets: sheets in file but NOT referenced in mapping
+              - source_file_match: whether the SOURCE FILE column matches input_file
+              - mapping_entries_affected: count of mapping rows referencing missing tabs
+        """
+        import pandas as pd
+
+        report = {
+            "input_file": input_file,
+            "matched_tabs": [],
+            "missing_tabs": [],
+            "extra_sheets": [],
+            "source_file_match": False,
+            "mapping_entries_affected": 0,
+            "warnings": [],
+            "errors": []
+        }
+
+        # --- 1. Load actual sheet names from input file ---
+        try:
+            xl = pd.ExcelFile(input_file)
+            actual_sheets = set(s.strip() for s in xl.sheet_names)
+        except Exception as e:
+            report["errors"].append(f"Cannot open input file: {e}")
+            self.logger.error(f"[ERR] Mapping validation: Cannot open input file '{input_file}': {e}")
+            return False, report
+
+        # --- 2. Collect TAB names referenced in mapping ---
+        mapping_tabs = set()
+        for series_name, meta in self.metadata.items():
+            tab = str(meta.get("tab", "")).strip()
+            if tab and tab.lower() not in ("", "nan", "none"):
+                mapping_tabs.add(tab)
+
+        # --- 3. Cross-check ---
+        for tab in sorted(mapping_tabs):
+            # Try exact match first
+            if tab in actual_sheets:
+                report["matched_tabs"].append(tab)
+            else:
+                # Try case-insensitive / stripped match
+                tab_lower = tab.lower()
+                fuzzy_match = next(
+                    (s for s in actual_sheets if s.strip().lower() == tab_lower), None
+                )
+                if fuzzy_match:
+                    report["matched_tabs"].append(f"{tab}   {fuzzy_match} (fuzzy)")
+                else:
+                    report["missing_tabs"].append(tab)
+                    # Count how many mapping entries are affected
+                    affected = sum(
+                        1 for m in self.metadata.values()
+                        if str(m.get("tab", "")).strip() == tab
+                    )
+                    report["mapping_entries_affected"] += affected
+                    report["warnings"].append(
+                        f"TAB '{tab}' referenced in mapping ({affected} entries) "
+                        f"but NOT found in '{os.path.basename(input_file)}'"
+                    )
+
+        # Sheets in file but not in mapping
+        matched_tab_names = set()
+        for t in report["matched_tabs"]:
+            matched_tab_names.add(t.split("   ")[0].strip())
+        report["extra_sheets"] = sorted(
+            s for s in actual_sheets if s not in matched_tab_names
+        )
+
+        # --- 4. Check SOURCE FILE column matches input filename ---
+        basename = os.path.basename(input_file).lower()
+        source_files_in_mapping = set()
+        for meta in self.metadata.values():
+            sf = str(meta.get("source_file", "")).strip().lower()
+            if sf and sf not in ("", "nan", "none"):
+                source_files_in_mapping.add(sf)
+
+        if any(self._is_filename_match(basename, sf) for sf in source_files_in_mapping):
+            report["source_file_match"] = True
+        else:
+            report["source_file_match"] = False
+            report["warnings"].append(
+                f"Input file '{basename}' does NOT match any SOURCE FILE entry in mapping. "
+                f"Mapping SOURCE FILE values: {sorted(source_files_in_mapping)[:5]}"
+            )
+
+        # --- 5. Log structured report ---
+        self.logger.info("=" * 60)
+        self.logger.info("[INFO] MAPPING vs SOURCE FILE VALIDATION REPORT")
+        self.logger.info("=" * 60)
+        self.logger.info(f"  Input File     : {input_file}")
+        self.logger.info(f"  Actual Sheets  : {sorted(actual_sheets)}")
+        self.logger.info(f"  Mapping TABs   : {sorted(mapping_tabs)}")
+        self.logger.info(f"  [OK] Matched TABs : {len(report['matched_tabs'])}")
+        self.logger.info(f"  [ERR] Missing TABs : {len(report['missing_tabs'])}   {report['missing_tabs']}")
+        self.logger.info(f"  [INFO]  Extra Sheets : {report['extra_sheets']}")
+        self.logger.info(f"  SOURCE FILE match: {'[OK] Yes' if report['source_file_match'] else '[ERR] No'}")
+        self.logger.info(f"  Affected entries: {report['mapping_entries_affected']}")
+
+        for w in report["warnings"]:
+            self.logger.warning(f"  [WARN]  {w}")
+
+        is_valid = len(report["missing_tabs"]) == 0 and report["source_file_match"]
+        self.logger.info(f"  Overall: {'[OK] VALID' if is_valid else '[WARN]  MISMATCH DETECTED'}")
+        self.logger.info("=" * 60)
+
+        return is_valid, report

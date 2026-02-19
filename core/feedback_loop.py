@@ -451,7 +451,7 @@ class FeedbackLoop:
             reverse=True
         )
         for pattern_key, pattern in sorted_successes[:5]:
-            lines.append(f"  ✓ {pattern['file_pattern']} → {pattern['preferred_track']} track")
+            lines.append(f"  [OK] {pattern['file_pattern']}   {pattern['preferred_track']} track")
             lines.append(f"    Successes: {pattern['success_count']}, Avg Quality: {pattern['avg_quality']:.2%}")
         lines.append("")
         
@@ -465,7 +465,7 @@ class FeedbackLoop:
                 reverse=True
             )
             for pattern_key, pattern in sorted_problems[:5]:
-                lines.append(f"  ✗ {pattern['file_pattern']} → {pattern['failed_track']} track")
+                lines.append(f"  [ERR] {pattern['file_pattern']}   {pattern['failed_track']} track")
                 lines.append(f"    Failures: {pattern['failure_count']}")
             lines.append("")
         
@@ -479,7 +479,7 @@ class FeedbackLoop:
                 reverse=True
             )
             for error_key, error_pattern in sorted_errors[:5]:
-                lines.append(f"  • {error_pattern['category']}: {error_pattern['count']} occurrences")
+                lines.append(f"    {error_pattern['category']}: {error_pattern['count']} occurrences")
             lines.append("")
         
         lines.append("=" * 70)

@@ -174,7 +174,7 @@ class MultiTrackRouter:
         - Cached configurations
         - ~1-2 seconds processing
         """
-        logger.info("→ Fast Track processing (Deterministic + Cache)")
+        logger.info("  Fast Track processing (Deterministic + Cache)")
         
         try:
             # Use fast track processor if provided
@@ -220,7 +220,7 @@ class MultiTrackRouter:
             logger.error(f"Fast track processing failed: {e}")
             
             # Fallback to hybrid track
-            logger.info("↑ Falling back to Hybrid Track")
+            logger.info("  Falling back to Hybrid Track")
             return self._process_hybrid_track(
                 file_path, df, sheet_name, metadata, processors
             )
@@ -235,7 +235,7 @@ class MultiTrackRouter:
         - Deterministic extraction
         - ~5-10 seconds processing
         """
-        logger.info("→ Hybrid Track processing (Vector + Deterministic + Light AI)")
+        logger.info("  Hybrid Track processing (Vector + Deterministic + Light AI)")
         
         try:
             # Use hybrid track processor if provided
@@ -299,7 +299,7 @@ class MultiTrackRouter:
             logger.error(f"Hybrid track processing failed: {e}")
             
             # Fallback to full agentic track
-            logger.info("↑ Falling back to Full Agentic Track")
+            logger.info("  Falling back to Full Agentic Track")
             return self._process_full_agentic_track(
                 file_path, df, sheet_name, metadata, processors
             )
@@ -317,7 +317,7 @@ class MultiTrackRouter:
         - Quality auditing
         - ~20-30 seconds processing
         """
-        logger.info("→ Full Agentic Track processing (Complete AI Pipeline)")
+        logger.info("  Full Agentic Track processing (Complete AI Pipeline)")
         
         try:
             # Use full agentic processor if provided

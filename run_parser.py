@@ -18,8 +18,8 @@ def main():
      """,
      )
     parser.add_argument('--input', "-i", required=True, help='Path to the input Excel file')
-    parser.add_argument('--mapping', "-m", required=False, default='config/Argentina_Map_Updated.xlsm',
-                        help='Path to the mapping file (default: config/Argentina_Map_Updated.xlsm)')
+    parser.add_argument('--mapping', "-m", required=False, default='config/Argentina_Map_Updated.xlsx',
+                        help='Path to the mapping file (default: config/Argentina_Map_Updated.xlsx)')
     parser.add_argument('--pattern', "-p", required=False, default='config/Patterns.xlsx', 
                         help='Path to the pattern file (default: config/Patterns.xlsx)')
 
