@@ -1,9 +1,9 @@
 {
-  "total_patterns": 16,
-  "cache_hits": 66,
-  "cache_misses": 25,
-  "patterns_created": 16,
+  "total_patterns": 19,
+  "cache_hits": 75,
+  "cache_misses": 28,
+  "patterns_created": 19,
   "patterns_expired": 0,
-  "fast_track_count": 66,
+  "fast_track_count": 75,
   "avg_confidence": 0.0
 }

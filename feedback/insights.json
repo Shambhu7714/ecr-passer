@@ -78,6 +78,36 @@
       "failed_track": "full",
       "failure_count": 9,
       "errors": []
+    },
+    "anex-geih-dic2025|full": {
+      "file_pattern": "anex-geih-dic2025",
+      "failed_track": "full",
+      "failure_count": 2,
+      "errors": []
+    },
+    "anex-elic-seriecobergeo-nov2025|hybrid": {
+      "file_pattern": "anex-elic-seriecobergeo-nov2025",
+      "failed_track": "hybrid",
+      "failure_count": 2,
+      "errors": []
+    },
+    "sample2|hybrid": {
+      "file_pattern": "sample2",
+      "failed_track": "hybrid",
+      "failure_count": 2,
+      "errors": []
+    },
+    "anex-elic-seriecobergeo-nov2025|full": {
+      "file_pattern": "anex-elic-seriecobergeo-nov2025",
+      "failed_track": "full",
+      "failure_count": 8,
+      "errors": []
+    },
+    "anex-geih-dic2025|fast": {
+      "file_pattern": "anex-geih-dic2025",
+      "failed_track": "fast",
+      "failure_count": 1,
+      "errors": []
     }
   },
   "error_patterns": {},
