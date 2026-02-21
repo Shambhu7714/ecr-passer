@@ -217,11 +217,14 @@ class DeterministicExtractor:
             f = float(s_clean)
             
             # Filter out 0.0 values as they often indicate no data recorded for the period
+            # In GEIH, 0 is typically a placeholder for 'no survey' or 'insufficient data'
             if f == 0:
                 return None
                 
-            # Return full precision as requested
-            return f
+            # Round to a reasonable precision (8 decimals) to clean up 
+            # floating point artifacts (e.g. 693.1636666666668 -> 693.16366667)
+            # This balances 'exact match' with 'not seeing noise in input'
+            return round(f, 8)
         except: return None
 
 class DeterministicCore:
