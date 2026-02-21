@@ -105,12 +105,12 @@ class DeterministicExtractor:
                         val = row.get(col)
                         if pd.isna(val) or str(val).strip() in ('', '-'): continue
                         
-                        # Handle partial dates in pivot if necessary (rare)
-                        clean_dkey = f"{base_year}{dkey}" if dkey.startswith("-") else dkey
-                        # ONLY set the value if it hasn't been found yet to avoid overwriting 
-                        # Nacional data with Cabeceras/Resto data from lower in the sheet
-                        if clean_dkey not in output[scode]["values"]:
-                            output[scode]["values"][clean_dkey] = self._clean_value(val)
+                        clean_val = self._clean_value(val)
+                        if clean_val is not None:
+                            clean_dkey = f"{base_year}{dkey}" if dkey.startswith("-") else dkey
+                            # Nacional data prioritized over Cabeceras
+                            if clean_dkey not in output[scode]["values"]:
+                                output[scode]["values"][clean_dkey] = clean_val
         return output
 
     def _extract_stacked(self, df, mapping_metadata, base_year, reasoned_mappings=None):
@@ -166,8 +166,11 @@ class DeterministicExtractor:
             for col, scode in col_to_scode.items():
                 val = row.get(col)
                 if pd.isna(val) or str(val).strip() in ('', '-'): continue
-                if scode not in output: output[scode] = {"values": {}}
-                output[scode]["values"][date_key] = self._clean_value(val)
+                
+                clean_val = self._clean_value(val)
+                if clean_val is not None:
+                    if scode not in output: output[scode] = {"values": {}}
+                    output[scode]["values"][date_key] = clean_val
         return output
 
     def _iter_metadata(self, mapping_metadata):
@@ -212,6 +215,11 @@ class DeterministicExtractor:
             s_clean = str(val).replace(',', '').replace('%', '').strip()
             if not s_clean or s_clean == '-': return None
             f = float(s_clean)
+            
+            # Filter out 0.0 values as they often indicate no data recorded for the period
+            if f == 0:
+                return None
+                
             # Return full precision as requested
             return f
         except: return None

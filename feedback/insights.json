@@ -4,6 +4,12 @@
     "anex-geih-dic2025|fast": {
       "file_pattern": "anex-geih-dic2025",
       "failed_track": "fast",
+      "failure_count": 6,
+      "errors": []
+    },
+    "anex-chv-ivtrim2024|fast": {
+      "file_pattern": "anex-chv-ivtrim2024",
+      "failed_track": "fast",
       "failure_count": 3,
       "errors": []
     }
