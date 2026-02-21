@@ -13,14 +13,15 @@
         "Año",
         "A o",
         "Mes",
-        "Clases"
+        "Clases",
+        "Concepto",
+        "Indicador"
     ],
     "footer_keywords": [
         "Fuente:",
         "Nota:",
         "FUENTE:",
-        "NOTA:",
-        "*"
+        "NOTA:"
     ],
     "code_column_names": [
         "Código",
@@ -47,6 +48,18 @@
         "octubre",
         "noviembre",
         "diciembre",
+        "ene",
+        "feb",
+        "mar",
+        "abr",
+        "may",
+        "jun",
+        "jul",
+        "ago",
+        "sep",
+        "oct",
+        "nov",
+        "dic",
         "q1",
         "q2",
         "q3",

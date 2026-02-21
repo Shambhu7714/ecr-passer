@@ -69,8 +69,8 @@ def preprocess_excel(file_path, sheet_name=None, mapping_file=None):
                 break
 
     # Propagate labels for merged/sparse cells (crucial for Year/Category columns)
-    # Replace empty strings/whitespace with NaN to ensure ffill works
-    df_clean = df_clean.replace(r'^\s*$', np.nan, regex=True).replace('None', np.nan)
+    # Aggressively clean up empty-looking strings so ffill works
+    df_clean = df_clean.map(lambda x: np.nan if str(x).strip().lower() in ['', 'nan', 'none', 'null'] else x)
     df_clean = df_clean.ffill(axis=0)
 
     return df_clean
@@ -150,7 +150,15 @@ def _read_excel_with_merged_headers(file_path, sheet_name, header_row_idx, secon
 def _find_header_by_keywords(df, keywords):
     for idx, row in df.iterrows():
         row_str = ' '.join([str(x) for x in row.values if pd.notna(x)]).lower()
-        if any(kw.lower() in row_str for kw in keywords):
+        # Use regex word boundaries to avoid matching "mes" inside "trimestral"
+        hits = 0
+        for kw in keywords:
+            pattern = r'\b' + re.escape(kw.lower()) + r'\b'
+            if re.search(pattern, row_str):
+                hits += 1
+        
+        # Exact keyword matches (Concepto, Actividad, etc.) are strong signals
+        if hits >= 1:
             return idx
     return None
 

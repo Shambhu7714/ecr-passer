@@ -19,33 +19,46 @@ class TimeNormalizer:
             'january': 1, 'february': 2, 'march': 3, 'april': 4, 'may': 5, 'june': 6,
             'july': 7, 'august': 8, 'september': 9, 'october': 10, 'november': 11, 'december': 12,
             'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
-            'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12
+            'jul': 7, 'ago': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dic': 12
         }
 
     def parse_date(self, s):
         """Robust date parsing for headers or cells."""
-        s = str(s).strip().lower().replace('\n', ' ')
+        if pd.isna(s): return None
+        s_orig = str(s).strip()
+        s = s_orig.lower().replace('\n', ' ')
         if not s or s == 'nan' or s == 'none': return None
         
+        # Quarter mapping for strings like "Enero - marzo"
+        if '-' in s or 'trimestre' in s:
+            if any(m in s for m in ['enero', 'marzo']): return "-03-01"
+            if any(m in s for m in ['abril', 'junio']): return "-06-01"
+            if any(m in s for m in ['julio', 'septiembre']): return "-09-01"
+            if any(m in s for m in ['octubre', 'diciembre']): return "-12-01"
+
         # Pattern: "YYYY-MM-DD"
         if re.match(r'^\d{4}-\d{1,2}-\d{1,2}', s):
             return s[:10]
-            
-        # Pattern: "MM-YYYY" or "YYYY-MM" or "Year - Month"
+        
         # Split by non-alphanumeric (except space)
         parts = [p.strip() for p in re.split(r'[^a-z0-9]', s) if p.strip()]
         y, m = None, None
         for p in parts:
             if p.isdigit():
                 val = int(p)
-                if 1900 < val < 2100: y = val
-                elif 1 <= val <= 12: m = val
+                if 1900 < val < 2100: 
+                    y = val
+                elif 10 <= val <= 99 and y is None: 
+                    y = 2000 + val
+                elif 1 <= val <= 12 and m is None:
+                    m = val
             elif p in self.month_map_es:
-                 m = self.month_map_es[p]
+                if m is None: m = self.month_map_es[p]
             elif p in self.month_map_en:
-                 m = self.month_map_en[p]
+                if m is None: m = self.month_map_en[p]
         
         if y and m: return f"{y}-{m:02d}-01"
+        if m: return f"-{m:02d}-01" # Return suffix for partial match
         if y: return f"{y}-01-01"
         return None
 
@@ -53,66 +66,57 @@ class DeterministicExtractor:
     def __init__(self):
         self.time_normalizer = TimeNormalizer()
 
-    def extract_concept_based(self, df, mapping_metadata, base_year=2024, source_file=None, all_metadata=None):
-        if df.empty: return {}
+    def extract_concept_based(self, df, mapping_metadata, base_year=2024, source_file=None, all_metadata=None, reasoned_mappings=None):
+        # Header-based date detection (Pivot)
+        date_headers = sum(1 for col in df.columns if self.time_normalizer.parse_date(col) and not str(self.time_normalizer.parse_date(col)).startswith("-"))
         
-        # 1. Detect Layout (Pivot or Stacked)
-        # GEIH is Pivot (Time in headers), ELIC is Stacked (Time in rows)
-        date_headers = sum(1 for col in df.columns if self.time_normalizer.parse_date(col))
-        
-        if date_headers >= 3:
-            return self._extract_pivot(df, mapping_metadata)
+        if date_headers >= 2:
+            return self._extract_pivot(df, mapping_metadata, base_year, reasoned_mappings)
         else:
-            return self._extract_stacked(df, mapping_metadata, base_year)
+            return self._extract_stacked(df, mapping_metadata, base_year, reasoned_mappings)
 
-    def _extract_pivot(self, df, mapping_metadata):
-        """Time in columns, Indicators in rows (GEIH Style)"""
-        # Find indicator column (usually col 0 or 1)
-        best_col = None
-        best_match_count = -1
-        
-        concepts = []
-        for meta in mapping_metadata.values():
-            if meta.get('primary_concept'): concepts.append(str(meta['primary_concept']).lower().strip())
-            if meta.get('secondary_concept'): concepts.append(str(meta['secondary_concept']).lower().strip())
-        
-        for cidx in range(min(4, len(df.columns))):
-            matches = sum(1 for v in df.iloc[:, cidx].dropna() if str(v).lower().strip() in concepts)
-            if matches > best_match_count:
-                best_match_count = matches
-                best_col = df.columns[cidx]
-        
-        if best_col is None: return {}
-        
-        date_cols = [c for c in df.columns if self.time_normalizer.parse_date(c)]
+    def _extract_pivot(self, df, mapping_metadata, base_year, reasoned_mappings=None):
+        date_cols = [col for col in df.columns if self.time_normalizer.parse_date(col)]
         output = {}
         
         for _, row in df.iterrows():
-            row_val = str(row.get(best_col, '')).lower().strip()
-            if not row_val: continue
+            row_val = str(row.iloc[0]).strip().lower() 
+            if not row_val or row_val in ('nan', 'none'): continue
             
-            for code_key, meta in mapping_metadata.items():
+            for code_key, meta in self._iter_metadata(mapping_metadata):
                 scode = meta.get('series_code', code_key)
-                prim = str(meta.get('primary_concept', '')).lower().strip()
-                sec = str(meta.get('secondary_concept', '')).lower().strip()
                 
-                # Match logic: Exact match on secondary is usually best for GEIH
-                if row_val == sec or row_val == prim or (prim and sec and row_val == sec):
+                match = False
+                prim = str(meta.get('primary_concept', '')).strip().lower()
+                sec = str(meta.get('secondary_concept', '')).strip().lower()
+                
+                if sec and row_val == sec: match = True
+                elif prim and row_val == prim: match = True
+                elif prim and sec and (prim in row_val and sec in row_val): match = True
+                
+                if not match and reasoned_mappings:
+                    if row_val in reasoned_mappings and reasoned_mappings[row_val] == scode:
+                        match = True
+                
+                if match:
                     if scode not in output: output[scode] = {"values": {}}
                     for col in date_cols:
                         dkey = self.time_normalizer.parse_date(col)
                         val = row.get(col)
                         if pd.isna(val) or str(val).strip() in ('', '-'): continue
-                        output[scode]["values"][dkey] = str(val)
-                    break 
+                        
+                        # Handle partial dates in pivot if necessary (rare)
+                        clean_dkey = f"{base_year}{dkey}" if dkey.startswith("-") else dkey
+                        # ONLY set the value if it hasn't been found yet to avoid overwriting 
+                        # Nacional data with Cabeceras/Resto data from lower in the sheet
+                        if clean_dkey not in output[scode]["values"]:
+                            output[scode]["values"][clean_dkey] = self._clean_value(val)
         return output
 
-    def _extract_stacked(self, df, mapping_metadata, base_year):
-        """Indicators in columns, Time in rows (ELIC Style)"""
+    def _extract_stacked(self, df, mapping_metadata, base_year, reasoned_mappings=None):
         YEAR_KWS = ['año', 'year', 'anos', 'ano', 'años']
-        MONTH_KWS = ['mes', 'month', 'periodo', 'periodo', 'meses']
+        MONTH_KWS = ['mes', 'month', 'periodo', 'trimestre', 'meses']
         
-        # Pick Year and Month columns
         y_col, m_col = None, None
         best_y_score, best_m_score = -1, -1
         
@@ -121,8 +125,9 @@ class DeterministicExtractor:
             vals = df[col].dropna().astype(str).str.strip().str.lower()
             if vals.empty: continue
             
+            # Count potential years and partial dates
             y_hits = sum(1 for v in vals if v.replace('.0','').isdigit() and 1990 < int(float(v)) < 2100)
-            m_hits = sum(1 for v in vals if v in self.time_normalizer.month_map_es or (v.isdigit() and 1 <= int(float(v)) <= 12))
+            m_hits = sum(1 for v in vals if self.time_normalizer.parse_date(v) is not None)
             
             if any(kw in cl for kw in YEAR_KWS): y_hits += 50
             if any(kw in cl for kw in MONTH_KWS): m_hits += 50
@@ -134,60 +139,93 @@ class DeterministicExtractor:
                 best_m_score = m_hits
                 m_col = col
 
-        if y_col == m_col or not y_col or not m_col: return {}
+        if not y_col and not m_col: return {}
         
         val_cols = [c for c in df.columns if c not in [y_col, m_col]]
-        col_to_scode = self._match_cols_to_series(val_cols, mapping_metadata)
+        col_to_scode = self._match_cols_to_series(val_cols, mapping_metadata, reasoned_mappings)
         
         output = {}
+        last_y = None
         for _, row in df.iterrows():
-            y_raw = row.get(y_col)
-            m_raw = row.get(m_col)
-            if pd.isna(y_raw) or pd.isna(m_raw): continue
+            y_raw = row.get(y_col) if y_col else None
+            m_raw = row.get(m_col) if m_col else None
             
-            try:
-                y_val = int(float(y_raw))
-                m_str = str(m_raw).strip().lower()
-                m_val = self.time_normalizer.month_map_es.get(m_str, self.time_normalizer.month_map_en.get(m_str))
-                if m_val is None: m_val = int(float(m_raw))
-                date_key = f"{y_val}-{m_val:02d}-01"
-            except: continue
+            if pd.notna(y_raw): 
+                try: 
+                    val = float(str(y_raw).replace(',',''))
+                    if 1990 < val < 2100: last_y = int(val)
+                except: pass
             
+            if not last_y or pd.isna(m_raw): continue
+            
+            norm_m = self.time_normalizer.parse_date(m_raw)
+            if not norm_m: continue
+            
+            date_key = f"{last_y}{norm_m}" if norm_m.startswith("-") else norm_m
+
             for col, scode in col_to_scode.items():
                 val = row.get(col)
                 if pd.isna(val) or str(val).strip() in ('', '-'): continue
                 if scode not in output: output[scode] = {"values": {}}
-                output[scode]["values"][date_key] = str(val)
+                output[scode]["values"][date_key] = self._clean_value(val)
         return output
 
-    def _match_cols_to_series(self, val_cols, mapping_metadata):
+    def _iter_metadata(self, mapping_metadata):
+        if not isinstance(mapping_metadata, dict): return []
+        for k, v in mapping_metadata.items():
+            if isinstance(v, dict):
+                yield k, v
+            else:
+                yield k, {"series_code": v}
+
+    def _match_cols_to_series(self, val_cols, mapping_metadata, reasoned_mappings=None):
         matches = {}
         for col in val_cols:
             cl = str(col).lower().strip()
             best_scode = None
             best_score = -1
             
-            for code_key, meta in mapping_metadata.items():
+            for code_key, meta in self._iter_metadata(mapping_metadata):
                 scode = meta.get('series_code', code_key)
                 prim = str(meta.get('primary_concept', '')).lower().strip()
                 sec = str(meta.get('secondary_concept', '')).lower().strip()
                 
                 score = 0
-                if prim and sec:
-                    if prim in cl and sec in cl: score = 5
-                elif prim:
-                    if prim == cl: score = 3
-                    elif prim in cl: score = 1
+                if prim and sec and prim in cl and sec in cl: score = 10
+                elif sec and sec == cl: score = 8
+                elif prim and prim == cl: score = 5
+                elif prim and prim in cl: score = 2
                 
-                if score > best_score:
+                if reasoned_mappings and cl in reasoned_mappings:
+                    if reasoned_mappings[cl] == scode:
+                        score = 15
+                
+                if score > best_score and score > 0:
                     best_score = score
                     best_scode = scode
             if best_scode: matches[col] = best_scode
         return matches
+
+    def _clean_value(self, val):
+        try:
+            # Handle percentage notation, commas, and whitespace
+            s_clean = str(val).replace(',', '').replace('%', '').strip()
+            if not s_clean or s_clean == '-': return None
+            f = float(s_clean)
+            # Return full precision as requested
+            return f
+        except: return None
 
 class DeterministicCore:
     def __init__(self):
         self.extractor = DeterministicExtractor()
 
     def process(self, df, layout, mapping, metadata_dict=None, base_year=2024, source_file=None, all_metadata=None):
-        return self.extractor.extract_concept_based(df, metadata_dict, base_year, source_file, all_metadata)
+        reasoned = None
+        if isinstance(all_metadata, dict):
+            reasoned = all_metadata.get("reasoned_mappings")
+            
+        # Ensure we use full metadata for concept matching
+        primary_mapping = metadata_dict if metadata_dict and isinstance(next(iter(metadata_dict.values()), None), dict) else mapping
+        
+        return self.extractor.extract_concept_based(df, primary_mapping, base_year, source_file, all_metadata, reasoned_mappings=reasoned)

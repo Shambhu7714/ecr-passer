@@ -76,13 +76,13 @@
     "anex-chv-ivtrim2024|full": {
       "file_pattern": "anex-chv-ivtrim2024",
       "failed_track": "full",
-      "failure_count": 9,
+      "failure_count": 39,
       "errors": []
     },
     "anex-geih-dic2025|full": {
       "file_pattern": "anex-geih-dic2025",
       "failed_track": "full",
-      "failure_count": 2,
+      "failure_count": 5,
       "errors": []
     },
     "anex-elic-seriecobergeo-nov2025|hybrid": {
@@ -106,7 +106,13 @@
     "anex-geih-dic2025|fast": {
       "file_pattern": "anex-geih-dic2025",
       "failed_track": "fast",
-      "failure_count": 1,
+      "failure_count": 26,
+      "errors": []
+    },
+    "anex-geih-dic2025|hybrid": {
+      "file_pattern": "anex-geih-dic2025",
+      "failed_track": "hybrid",
+      "failure_count": 2,
       "errors": []
     }
   },

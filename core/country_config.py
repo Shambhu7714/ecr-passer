@@ -74,11 +74,11 @@ class CountryConfigLoader:
                         cfg = json.load(f)
                     country_code = cfg.get("country_code", fname.replace(".json", "")).upper()
                     self._configs[country_code] = cfg
-                    logger.info(f"  [PATH] Loaded country config: {country_code} ({cfg.get('country_name', '?')})")
+                    # Silent load, only log summary
                 except Exception as e:
                     logger.warning(f"  [WARN] Could not load country config '{fname}': {e}")
 
-        logger.info(f"[OK] Loaded {len(self._configs)} country config(s): {list(self._configs.keys())}")
+        logger.info(f"[INIT] Loaded {len(self._configs)} country formats: {list(self._configs.keys())}")
 
     def detect_and_load(self, input_file: str, mapping_file: str = None) -> Dict:
         """
@@ -103,7 +103,7 @@ class CountryConfigLoader:
 
         if country_code and country_code in self._configs:
             cfg = self._configs[country_code]
-            logger.info(f"[OK] Detected country: {cfg.get('country_name', country_code)} ({country_code})")
+            logger.info(f"[OK] Working with country format: {cfg.get('country_name', country_code)} ({country_code})")
             return cfg
 
         # Fallback: universal config
@@ -137,7 +137,7 @@ class CountryConfigLoader:
         # Common country code patterns in filenames
         common_codes = {
             "ARG": "AR", "ARGENTINA": "AR",
-            "COL": "CO", "COLOMBIA": "CO", "EMMET": "CO",
+            "COL": "CO", "COLOMBIA": "CO", "EMMET": "CO", "GEIH": "CO", "CHV": "CO",
             "BRA": "BR", "BRAZIL": "BR", "BRASIL": "BR",
             "MEX": "MX", "MEXICO": "MX", "M XICO": "MX",
             "CHL": "CL", "CHILE": "CL",
