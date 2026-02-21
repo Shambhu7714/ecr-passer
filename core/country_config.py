@@ -136,8 +136,8 @@ class CountryConfigLoader:
 
         # Common country code patterns in filenames
         common_codes = {
-            "ARG": "AR", "ARGENTINA": "AR",
-            "COL": "CO", "COLOMBIA": "CO", "EMMET": "CO", "GEIH": "CO", "CHV": "CO",
+            "ARG": "AR", "ARGENTINA": "AR", "IPIM": "AR",
+            "COL": "CO", "COLOMBIA": "CO", "EMMET": "CO", "GEIH": "CO", "CHV": "CO", "IPC": "CO",
             "BRA": "BR", "BRAZIL": "BR", "BRASIL": "BR",
             "MEX": "MX", "MEXICO": "MX", "M XICO": "MX",
             "CHL": "CL", "CHILE": "CL",

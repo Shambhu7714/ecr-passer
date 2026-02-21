@@ -29,8 +29,11 @@ class TimeNormalizer:
         s = s_orig.lower().replace('\n', ' ')
         if not s or s == 'nan' or s == 'none': return None
         
-        # Quarter mapping for strings like "Enero - marzo"
-        if '-' in s or 'trimestre' in s:
+        # Explicitly skip unnamed columns which are just pandas placeholders
+        if 'unnamed' in s: return None
+        
+        # Quarter mapping for strings like "Enero - marzo" or "Trimestre 1"
+        if 'trimestre' in s or ('-' in s and any(m in s for m in self.month_map_es) and len(re.findall(r'[a-z]{3,}', s)) >= 2):
             if any(m in s for m in ['enero', 'marzo']): return "-03-01"
             if any(m in s for m in ['abril', 'junio']): return "-06-01"
             if any(m in s for m in ['julio', 'septiembre']): return "-09-01"
@@ -46,12 +49,16 @@ class TimeNormalizer:
         for p in parts:
             if p.isdigit():
                 val = int(p)
+                # Year check: 4 digits
                 if 1900 < val < 2100: 
                     y = val
-                elif 10 <= val <= 99 and y is None: 
-                    y = 2000 + val
+                # Month check: 1 or 2 digits, but ONLY if they are likely a month
                 elif 1 <= val <= 12 and m is None:
+                    # If the string is just the number, or it has month keywords, it's more likely a month
                     m = val
+                # Potential 2-digit year (yy)
+                elif 10 <= val <= 99 and y is None:
+                    y = 2000 + val
             elif p in self.month_map_es:
                 if m is None: m = self.month_map_es[p]
             elif p in self.month_map_en:
@@ -68,7 +75,8 @@ class DeterministicExtractor:
 
     def extract_concept_based(self, df, mapping_metadata, base_year=2024, source_file=None, all_metadata=None, reasoned_mappings=None):
         # Header-based date detection (Pivot)
-        date_headers = sum(1 for col in df.columns if self.time_normalizer.parse_date(col) and not str(self.time_normalizer.parse_date(col)).startswith("-"))
+        # Count both full dates (2024-01-01) and partial dates (-01-01)
+        date_headers = sum(1 for col in df.columns if self.time_normalizer.parse_date(col) is not None)
         
         if date_headers >= 2:
             return self._extract_pivot(df, mapping_metadata, base_year, reasoned_mappings)

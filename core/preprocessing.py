@@ -124,7 +124,7 @@ def _read_excel_with_merged_headers(file_path, sheet_name, header_row_idx, secon
         t = _clean(top_s.iloc[i])
         s = _clean(sub_s.iloc[i])
         if t and s and t.lower() != s.lower():
-            columns.append(f"{t} - {s}")
+            columns.append(f"{t} | {s}")
         elif t:
             columns.append(t)
         elif s:
@@ -148,18 +148,35 @@ def _read_excel_with_merged_headers(file_path, sheet_name, header_row_idx, secon
     return df_out
 
 def _find_header_by_keywords(df, keywords):
-    for idx, row in df.iterrows():
-        row_str = ' '.join([str(x) for x in row.values if pd.notna(x)]).lower()
-        # Use regex word boundaries to avoid matching "mes" inside "trimestral"
+    best_row_idx = None
+    max_hits = 0
+    
+    # Check first 50 rows for header
+    for idx, row in df.head(50).iterrows():
+        row_vals = [str(x).strip() for x in row.values if pd.notna(x)]
+        if not row_vals: continue
+        
+        row_str = ' '.join(row_vals).lower()
+        
+        # If row is very long (title), it's likely not the header row
+        if len(row_str) > 200: continue
+        
         hits = 0
         for kw in keywords:
             pattern = r'\b' + re.escape(kw.lower()) + r'\b'
             if re.search(pattern, row_str):
                 hits += 1
         
-        # Exact keyword matches (Concepto, Actividad, etc.) are strong signals
-        if hits >= 1:
-            return idx
+        # We want the row with the MOST keyword hits
+        if hits > max_hits:
+            max_hits = hits
+            best_row_idx = idx
+            
+    # Require at least 2 hits for structural headers if we found something
+    # or return the best if we have high confidence
+    if max_hits >= 1:
+        return best_row_idx
+        
     return None
 
 def _find_data_table_start(df):

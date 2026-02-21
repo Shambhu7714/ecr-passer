@@ -1,11 +1,11 @@
 {
-  "total_files_processed": 15,
-  "successful_parses": 15,
+  "total_files_processed": 26,
+  "successful_parses": 26,
   "failed_parses": 0,
-  "fast_track_count": 15,
+  "fast_track_count": 24,
   "hybrid_track_count": 0,
-  "full_agentic_track_count": 0,
-  "avg_processing_time": 0.18905367851257324,
+  "full_agentic_track_count": 2,
+  "avg_processing_time": 0.6800537384473361,
   "avg_quality_score": 0.0,
   "total_cost": 0.0
 }

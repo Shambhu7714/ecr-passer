@@ -25,8 +25,16 @@ class HybridSupervisor:
         self.quality_auditor = QualityAuditor()
         self.supervisor = Supervisor(mapping_file, pattern_file, enable_hybrid)
 
-    def run_pipeline(self, input_file, base_year=2024):
+    def run_pipeline(self, input_file, base_year=None):
         self.logger.info(f"[START] Processing {input_file}")
+        
+        # Auto-detect base year from filename if not provided
+        if base_year is None:
+            import re
+            match = re.search(r'20\d{2}', input_file)
+            base_year = int(match.group()) if match else 2024
+            self.logger.info(f"[INFO] Auto-detected base year: {base_year}")
+            
         self.map_loader.load()
         xl = pd.ExcelFile(input_file)
         actual_sheets = xl.sheet_names
